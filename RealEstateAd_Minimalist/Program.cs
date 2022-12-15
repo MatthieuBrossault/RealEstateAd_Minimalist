@@ -1,4 +1,10 @@
+using RealEstateAd_Minimalist;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Add DbContext
+builder.Services.AddDbContext<RealEstateAdDb>(opt => opt.UseInMemoryDatabase("RealEstateAdList"));
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -34,6 +40,15 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+app.MapPost("/ad", async (RealEstateAd ad, RealEstateAdDb db) =>
+{
+    db.Ads.Add(ad);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/ad/{ad.Id}", ad.Id);
+})
+.WithName("CreateAd");
 
 app.Run();
 
