@@ -22,37 +22,31 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-       new WeatherForecast
-       (
-           DateTime.Now.AddDays(index),
-           Random.Shared.Next(-20, 55),
-           summaries[Random.Shared.Next(summaries.Length)]
-       ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 app.MapPost("/ad", async (RealEstateAd ad, RealEstateAdDb db) =>
 {
     db.Ads.Add(ad);
     await db.SaveChangesAsync();
 
     return Results.Created($"/ad/{ad.Id}", ad.Id);
-})
-.WithName("CreateAd");
+});
+
+app.MapPut("/ad/{id}", async (int id, RealEstateAd ad, RealEstateAdDb db) =>
+{
+    var dbAd = await db.Ads.FindAsync(id);
+
+    if (dbAd is null) return Results.NotFound();
+
+    dbAd.PublishStatus = ad.PublishStatus;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok();
+});
+
+app.MapGet("/ad/{id}", async (int id, RealEstateAdDb db) =>
+    await db.Ads.FindAsync(id)
+        is RealEstateAd ad && ad.PublishStatus != PublishStatus.WaitingValidation
+            ? Results.Ok(ad)
+            : Results.NotFound());
 
 app.Run();
-
-internal record WeatherForecast(DateTime Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
