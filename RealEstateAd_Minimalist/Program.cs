@@ -1,5 +1,6 @@
 using RealEstateAd_Minimalist;
 using Microsoft.EntityFrameworkCore;
+using Tiny.RestClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+var client = new TinyRestClient(new HttpClient(), "https://api.open-meteo.com/v1");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -44,9 +46,32 @@ app.MapPut("/ad/{id}", async (int id, RealEstateAd ad, RealEstateAdDb db) =>
 });
 
 app.MapGet("/ad/{id}", async (int id, RealEstateAdDb db) =>
-    await db.Ads.FindAsync(id)
-        is RealEstateAd ad && ad.PublishStatus != PublishStatus.WaitingValidation
-            ? Results.Ok(ad)
-            : Results.NotFound());
+{
+    var ad = await db.Ads.FindAsync(id);
+
+    var forecast = new Forecast();
+
+    try
+    {
+        forecast = await client
+        .GetRequest("forecast")
+        .AddQueryParameter("latitude", 52.52)
+        .AddQueryParameter("longitude", 13.41)
+        .AddQueryParameter("hourly", "temperature_2m")
+        .ExecuteAsync<Forecast>();
+    }
+    catch (HttpException ex) when (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
+    {
+        // Ignore
+    }
+
+    if (ad is RealEstateAd && ad.PublishStatus != PublishStatus.WaitingValidation)
+    {
+        return Results.Ok(new { ad, forecast });
+    }
+    return Results.NotFound();
+
+});
+    
 
 app.Run();
