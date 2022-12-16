@@ -1,2 +1,2 @@
 RealEstateAd_Minimalist
-![example workflow](https://github.com/github/docs/actions/workflows/dotnet.yml/badge.svg)
+![example workflow](https://github.com/MatthieuBrossault/RealEstateAd_Minimalist/workflows/dotnet.yml/badge.svg)
