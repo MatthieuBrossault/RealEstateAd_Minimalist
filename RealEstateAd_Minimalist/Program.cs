@@ -49,14 +49,19 @@ app.MapGet("/ad/{id}", async (int id, RealEstateAdDb db) =>
 {
     var ad = await db.Ads.FindAsync(id);
 
+    if (ad is null || ad.PublishStatus == PublishStatus.WaitingValidation)
+    {
+        return Results.NotFound();
+    }
+
     var forecast = new Forecast();
 
     try
     {
         forecast = await client
         .GetRequest("forecast")
-        .AddQueryParameter("latitude", 52.52)
-        .AddQueryParameter("longitude", 13.41)
+        .AddQueryParameter("latitude", ad.Location.Latitude)
+        .AddQueryParameter("longitude", ad.Location.Longitude)
         .AddQueryParameter("hourly", "temperature_2m")
         .ExecuteAsync<Forecast>();
     }
@@ -65,13 +70,7 @@ app.MapGet("/ad/{id}", async (int id, RealEstateAdDb db) =>
         // Ignore
     }
 
-    if (ad is RealEstateAd && ad.PublishStatus != PublishStatus.WaitingValidation)
-    {
-        return Results.Ok(new { ad, forecast });
-    }
-    return Results.NotFound();
-
+    return Results.Ok(new { ad, forecast });
 });
     
-
 app.Run();
